@@ -30,7 +30,7 @@ type User struct {
 var user User
 var users []User
 
-var addr = flag.String("addr", "127.0.0.1:8080", "http service address")
+var addr = flag.String("addr", ":8080", "http service address")
 
 func Cors() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -81,7 +81,14 @@ func validate_token(tokenString string) bool {
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		ID := claims["ID"]
-		dsn := "root:@tcp(127.0.0.1:3306)/go_chat?charset=utf8mb4&parseTime=True&loc=Local"
+		cfg, err := ini.Load("config.ini")
+		if err != nil {
+			fmt.Println("文件读取错误", err)
+			os.Exit(1)
+		}
+		mysqlConfig := cfg.Section("mysql")
+		dsn := mysqlConfig.Key("User").Value() + mysqlConfig.Key("Password").Value() + "@tcp(" + mysqlConfig.Key("Host").Value() + ")/" + mysqlConfig.Key("Name").Value() + "?charset=utf8mb4&parseTime=True&loc=Local"
+
 		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 		if err != nil {
 			log.Fatal("连接数据库失败", err)
@@ -223,5 +230,5 @@ func main() {
 			"message": Results,
 		})
 	})
-	r.Run("127.0.0.1:8081")
+	r.Run(":8081")
 }
