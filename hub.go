@@ -12,6 +12,9 @@ type SingleChat struct {
 	to string
 	// 消息
 	message string
+
+	// form username
+	from string
 }
 
 type Hub struct {

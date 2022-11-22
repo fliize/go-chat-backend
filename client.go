@@ -8,11 +8,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 const (
@@ -55,6 +54,7 @@ type Client struct {
 type Message struct {
 	To      string
 	Message string
+	From    string
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -81,7 +81,6 @@ func (c *Client) readPump() {
 		}
 
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		log.Println("messageObj", message, len(message))
 		var messageObj Message
 		err = json.Unmarshal(message, &messageObj)
 		if err != nil {
@@ -89,11 +88,9 @@ func (c *Client) readPump() {
 		}
 		log.Println("messageObj", messageObj, len(messageObj.To))
 		if len(messageObj.To) > 0 {
-			message := &SingleChat{to: messageObj.To, message: messageObj.Message}
+			message := &SingleChat{to: messageObj.To, message: messageObj.Message, from: messageObj.From}
 			c.hub.singleChat <- message
-			break
 		}
-		c.hub.broadcast <- message
 	}
 }
 
@@ -155,7 +152,6 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query()["username"]
 	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256), username: username[0]}
 	client.hub.register <- client
-	client.hub.broadcast <- []byte(fmt.Sprintf("%s加入对话", client.username))
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
